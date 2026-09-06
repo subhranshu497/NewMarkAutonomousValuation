@@ -1,0 +1,74 @@
+[
+  {
+    "submarket_id": "chi-fulton-market",
+    "metric": "vacancy_rate",
+    "points": [
+      { "period": "2025-Q3", "value": 0.121 },
+      { "period": "2025-Q4", "value": 0.116 },
+      { "period": "2026-Q1", "value": 0.109 },
+      { "period": "2026-Q2", "value": 0.104 }
+    ],
+    "yoy_change": -0.021,
+    "percentile_rank": 0.72
+  },
+  {
+    "submarket_id": "chi-fulton-market",
+    "metric": "net_absorption",
+    "points": [
+      { "period": "2025-Q3", "value": 42000 },
+      { "period": "2025-Q4", "value": 61000 },
+      { "period": "2026-Q1", "value": 58500 },
+      { "period": "2026-Q2", "value": 73200 }
+    ],
+    "yoy_change": 0.34,
+    "percentile_rank": 0.81
+  },
+  {
+    "submarket_id": "chi-fulton-market",
+    "metric": "asking_rent_trend",
+    "points": [
+      { "period": "2025-Q3", "value": 40.1 },
+      { "period": "2025-Q4", "value": 41.0 },
+      { "period": "2026-Q1", "value": 42.0 },
+      { "period": "2026-Q2", "value": 43.1 }
+    ],
+    "yoy_change": 0.075,
+    "percentile_rank": 0.78
+  },
+  {
+    "submarket_id": "chi-river-north",
+    "metric": "vacancy_rate",
+    "points": [
+      { "period": "2025-Q3", "value": 0.148 },
+      { "period": "2025-Q4", "value": 0.151 },
+      { "period": "2026-Q1", "value": 0.145 },
+      { "period": "2026-Q2", "value": 0.139 }
+    ],
+    "yoy_change": -0.009,
+    "percentile_rank": 0.45
+  },
+  {
+    "submarket_id": "chi-river-north",
+    "metric": "net_absorption",
+    "points": [
+      { "period": "2025-Q3", "value": 18000 },
+      { "period": "2025-Q4", "value": 9500 },
+      { "period": "2026-Q1", "value": 21000 },
+      { "period": "2026-Q2", "value": 27800 }
+    ],
+    "yoy_change": 0.11,
+    "percentile_rank": 0.55
+  },
+  {
+    "submarket_id": "chi-river-north",
+    "metric": "asking_rent_trend",
+    "points": [
+      { "period": "2025-Q3", "value": 38.9 },
+      { "period": "2025-Q4", "value": 39.4 },
+      { "period": "2026-Q1", "value": 40.2 },
+      { "period": "2026-Q2", "value": 40.9 }
+    ],
+    "yoy_change": 0.041,
+    "percentile_rank": 0.58
+  }
+]

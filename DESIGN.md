@@ -4,7 +4,7 @@ Companion to `README.md`. That doc makes the case for *agentic RAG*; this doc
 is the detailed design — requirements, agent objectives, architecture,
 memory/context design, and an MVP-scoped deep dive.
 
-## 0. Suggested 1-Hour Interview Walkthrough
+## 0. Suggested 1-Hour Walkthrough
 
 | Time | Section | Goal |
 |---|---|---|
@@ -17,7 +17,7 @@ memory/context design, and an MVP-scoped deep dive.
 | 55–60 min | §6.8 MVP cut-line + risks | Shows judgment about what NOT to build first |
 
 If time is tight, cut §6 depth, not §3/§4 — objectives and architecture are
-what interviewers are actually probing for in an "agentic design" round.
+the parts that matter most for evaluating an agentic design.
 
 ---
 
@@ -177,8 +177,8 @@ recommendation gets challenged later.
 ## 5. Memory and Context Design
 
 Four distinct kinds of "memory," each solving a different problem — worth
-being explicit about the difference in the interview, since conflating them
-is a common tell of shallow agentic design.
+being explicit about the difference, since conflating them is a common tell
+of shallow agentic design.
 
 | Memory type | Scope | Storage | Purpose |
 |---|---|---|---|
@@ -210,9 +210,8 @@ rather than a variable-length dump).
 
 ## 6. Detailed Deep Dive (MVP-Scoped)
 
-Pick one of §6.3 or §6.4 to actually walk through live in the interview —
-they're the two pieces that make this "agentic" rather than "RAG with extra
-steps."
+Pick one of §6.3 or §6.4 to actually walk through live — they're the two
+pieces that make this "agentic" rather than "RAG with extra steps."
 
 ### 6.1 Tool contracts
 
@@ -310,10 +309,10 @@ FR9/auditability actually requires operationally, not just conceptually.
 | Manual review queue (simple flag + list) | Auto-generated client-facing PDF reports |
 | Single-property valuation | Portfolio-level batch valuation |
 
-The one-sentence version for the interview: **the MVP proves the agentic
-loop (retrieve → judge sufficiency → refine → ground → verify) end to end on
-the narrowest possible surface — two tools, one property at a time — before
-spending effort on breadth.**
+The one-sentence version: **the MVP proves the agentic loop (retrieve →
+judge sufficiency → refine → ground → verify) end to end on the narrowest
+possible surface — two tools, one property at a time — before spending
+effort on breadth.**
 
 ---
 
