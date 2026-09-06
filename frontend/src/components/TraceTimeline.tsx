@@ -6,10 +6,14 @@ interface TraceTimelineProps {
 
 export function TraceTimeline({ trace }: TraceTimelineProps) {
   return (
-    <ol>
+    <ol className="timeline">
       {trace.map((span) => (
-        <li key={`${span.step}-${span.started_at}`}>
-          {span.step}: {span.result_summary}
+        <li className="timeline-item" key={`${span.step}-${span.started_at}`}>
+          <div className="timeline-step">{span.step}</div>
+          <div className="timeline-summary">{span.result_summary}</div>
+          <div className="timeline-meta">
+            {span.started_at} → {span.finished_at}
+          </div>
         </li>
       ))}
     </ol>

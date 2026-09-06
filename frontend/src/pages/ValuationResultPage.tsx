@@ -18,36 +18,69 @@ export function ValuationResultPage() {
       .catch((err) => setError(err instanceof Error ? err.message : "Failed to load"));
   }, [id]);
 
-  if (error) return <p role="alert">{error}</p>;
-  if (!response) return <p>Loading...</p>;
+  if (error) {
+    return (
+      <div className="alert alert-error" role="alert">
+        {error}
+      </div>
+    );
+  }
+
+  if (!response) {
+    return <div className="loading-state">Loading valuation…</div>;
+  }
 
   const { result, evidence, trace } = response;
 
   return (
     <section>
-      <h1>Valuation Result</h1>
-      <p>Request ID: {response.request_id}</p>
+      <div className="page-header">
+        <div>
+          <span className="eyebrow">Valuation result</span>
+          <h1 className="page-title">Recommended Rent</h1>
+        </div>
+        <span className="request-id">{response.request_id}</span>
+      </div>
 
-      <h2>
-        ${result.recommended_rent_psf} / PSF{" "}
-        <small>
-          (range ${result.range_low}–${result.range_high})
-        </small>
-      </h2>
-      <ConfidenceBadge confidence={result.confidence} needsHumanReview={result.needs_human_review} />
+      <div className="card">
+        <div className="result-hero">
+          <div>
+            <div className="rent-figure">
+              <span className="value">${result.recommended_rent_psf}</span>
+              <span className="unit">/ PSF</span>
+            </div>
+            <p className="rent-range">
+              Range ${result.range_low} – ${result.range_high}
+            </p>
+          </div>
+          <ConfidenceBadge confidence={result.confidence} needsHumanReview={result.needs_human_review} />
+        </div>
+      </div>
 
-      <h3>Rationale</h3>
-      <p>{result.rationale_text}</p>
+      <div className="card">
+        <h3 className="card-title" style={{ marginBottom: "0.75rem" }}>
+          Rationale
+        </h3>
+        <p className="rationale-text">{result.rationale_text}</p>
+      </div>
 
-      <h3>Evidence</h3>
-      <EvidencePanel
-        evidence={evidence}
-        citedCompIds={result.cited_comp_ids}
-        citedMarketStatIds={result.cited_market_stat_ids}
-      />
+      <div className="card">
+        <h3 className="card-title" style={{ marginBottom: "1.1rem" }}>
+          Evidence
+        </h3>
+        <EvidencePanel
+          evidence={evidence}
+          citedCompIds={result.cited_comp_ids}
+          citedMarketStatIds={result.cited_market_stat_ids}
+        />
+      </div>
 
-      <h3>Trace</h3>
-      <TraceTimeline trace={trace} />
+      <div className="card">
+        <h3 className="card-title" style={{ marginBottom: "1.1rem" }}>
+          Trace
+        </h3>
+        <TraceTimeline trace={trace} />
+      </div>
     </section>
   );
 }
