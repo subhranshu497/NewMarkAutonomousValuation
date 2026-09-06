@@ -4,6 +4,8 @@ backend/__pycache__/
 backend/**/__pycache__/
 backend/.pytest_cache/
 backend/.env
+backend/app/data/lancedb/
+backend/testdata/lancedb/
 
 # Frontend (Node / Vite)
 frontend/node_modules/

@@ -1,0 +1,44 @@
+[
+  {
+    "comp_id": "t_c_9001",
+    "address": "300 N LaSalle St",
+    "submarket_id": "chi-river-north",
+    "sf": 21000,
+    "lease_type": "direct",
+    "asking_rent_psf": 45.25,
+    "effective_rent_psf": 41.5,
+    "lease_start_date": "2026-03-01",
+    "tenant_industry": "legal",
+    "concessions": "2 months free on a 5-year term",
+    "source_system": "opensearch-comps",
+    "last_verified_at": "2026-08-25T00:00:00Z"
+  },
+  {
+    "comp_id": "t_c_9002",
+    "address": "444 W Lake St",
+    "submarket_id": "chi-fulton-market",
+    "sf": 15500,
+    "lease_type": "sublease",
+    "asking_rent_psf": 38.75,
+    "effective_rent_psf": 35.0,
+    "lease_start_date": "2026-01-15",
+    "tenant_industry": "technology",
+    "concessions": null,
+    "source_system": "opensearch-comps",
+    "last_verified_at": "2026-08-28T00:00:00Z"
+  },
+  {
+    "Comp ID": "t_c_9003",
+    "Property Address": "600 W Chicago Ave",
+    "submarket_id": "chi-fulton-market",
+    "Square Feet": 27500,
+    "lease_type": "direct",
+    "Asking Rent": 43.0,
+    "Effective Rent": 40.1,
+    "Lease Start": "2026-04-10",
+    "Industry": "financial_services",
+    "concessions": "1 month free on a 10-year term",
+    "source_system": "opensearch-comps",
+    "Verified At": "2026-09-01T00:00:00Z"
+  }
+]

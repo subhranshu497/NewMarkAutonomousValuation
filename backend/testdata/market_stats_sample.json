@@ -1,0 +1,26 @@
+[
+  {
+    "submarket_id": "chi-river-north",
+    "metric": "asking_rent_trend",
+    "points": [
+      { "period": "2025-Q3", "value": 43.8 },
+      { "period": "2025-Q4", "value": 44.4 },
+      { "period": "2026-Q1", "value": 44.9 },
+      { "period": "2026-Q2", "value": 45.6 }
+    ],
+    "yoy_change": 0.041,
+    "percentile_rank": 0.68
+  },
+  {
+    "submarket_id": "chi-fulton-market",
+    "metric": "net_absorption",
+    "points": [
+      { "period": "2025-Q3", "value": 39000 },
+      { "period": "2025-Q4", "value": 51000 },
+      { "period": "2026-Q1", "value": 47500 },
+      { "period": "2026-Q2", "value": 62000 }
+    ],
+    "yoy_change": 0.29,
+    "percentile_rank": 0.77
+  }
+]

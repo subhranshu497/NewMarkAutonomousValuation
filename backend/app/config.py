@@ -22,6 +22,17 @@ class Settings(BaseSettings):
 
     cors_allow_origins: list[str] = ["http://localhost:5174", "http://127.0.0.1:5174"]
 
+    voyage_api_key: str = ""
+    voyage_model: str = "voyage-3"
+    voyage_embedding_dimension: int = 1024
+
+    lancedb_uri: str = "app/data/lancedb"
+    lancedb_table_name: str = "evidence_documents"
+    ingestion_batch_size: int = 128
+
+    retrieval_top_k: int = 5
+    retrieval_min_similarity: float = 0.2
+
 
 @lru_cache
 def get_settings() -> Settings:
