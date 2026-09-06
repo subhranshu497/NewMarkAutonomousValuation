@@ -2,6 +2,8 @@ from datetime import datetime
 
 from pydantic import BaseModel
 
+from app.schemas.evidence import EvidenceBundle
+
 
 class ValuationResult(BaseModel):
     recommended_rent_psf: float
@@ -25,4 +27,5 @@ class TraceSpan(BaseModel):
 class ValuationResponse(BaseModel):
     request_id: str
     result: ValuationResult
+    evidence: EvidenceBundle
     trace: list[TraceSpan]

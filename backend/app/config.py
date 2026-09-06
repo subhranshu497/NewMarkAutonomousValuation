@@ -18,8 +18,9 @@ class Settings(BaseSettings):
 
     confidence_threshold: float = 0.6
     review_min_comp_count: int = 3
+    top_n_comps: int = 8
 
-    cors_allow_origins: list[str] = ["http://localhost:5173"]
+    cors_allow_origins: list[str] = ["http://localhost:5174", "http://127.0.0.1:5174"]
 
 
 @lru_cache

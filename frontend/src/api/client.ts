@@ -28,3 +28,14 @@ export function getValuation(id: string): Promise<ValuationResponse> {
 export function listReviewQueue(): Promise<ValuationResponse[]> {
   return request("/api/review-queue");
 }
+
+export function submitReviewDecision(
+  id: string,
+  approved: boolean,
+  analystOverridePsf?: number,
+): Promise<{ status: string }> {
+  return request(`/api/review-queue/${id}/decision`, {
+    method: "POST",
+    body: JSON.stringify({ approved, analyst_override_psf: analystOverridePsf ?? null }),
+  });
+}

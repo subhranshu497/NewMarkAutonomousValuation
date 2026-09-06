@@ -41,8 +41,8 @@ aggregate math (medians/means are already computed for you in
   ones that materially informed the number or are referenced in the
   rationale.
 - `cited_market_stat_ids` must reference specific series in
-  `market_trend_deltas` (use `f"{submarket_id}_{metric}_{time_window}"` as
-  the ID) that you relied on.
+  `market_trend_deltas` (use `f"{submarket_id}_{metric}"` as the ID, e.g.
+  `"chi-fulton-market_vacancy_rate"`) that you relied on.
 - A deterministic verifier will cross-check every ID you cite against the
   evidence bundle actually passed to you. Any citation that doesn't resolve
   is treated as a groundedness failure and forces `needs_human_review`,

@@ -76,5 +76,6 @@ export interface TraceSpan {
 export interface ValuationResponse {
   request_id: string;
   result: ValuationResult;
+  evidence: EvidenceBundle;
   trace: TraceSpan[];
 }

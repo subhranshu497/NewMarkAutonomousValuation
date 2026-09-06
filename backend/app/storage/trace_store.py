@@ -1,17 +1,14 @@
-from app.schemas.result import TraceSpan, ValuationResponse
+from app.schemas.result import ValuationResponse
 
-
-def save_trace(request_id: str, spans: list[TraceSpan]) -> None:
-    """DESIGN.md FR9/§6.7 — append-only audit trace, retained per valuation
-    for a defined retention window."""
-    raise NotImplementedError
-
-
-def get_trace(request_id: str) -> list[TraceSpan]:
-    raise NotImplementedError
+# In-memory, process-local store — an intentional MVP gap (DESIGN.md FR9
+# calls for durable, retained audit trace; this proves the loop end-to-end
+# first). Swapping to real persistence later only touches this module.
+_responses: dict[str, ValuationResponse] = {}
 
 
 def save_result(response: ValuationResponse) -> None:
-    """Also backs the feedback/episodic store (§5) for MVP: logged only,
-    not yet consumed by any live learning loop."""
-    raise NotImplementedError
+    _responses[response.request_id] = response
+
+
+def get_result(request_id: str) -> ValuationResponse | None:
+    return _responses.get(request_id)

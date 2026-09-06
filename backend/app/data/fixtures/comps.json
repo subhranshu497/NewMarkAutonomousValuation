@@ -56,6 +56,48 @@
     "last_verified_at": "2026-08-28T00:00:00Z"
   },
   {
+    "comp_id": "c_1247",
+    "address": "550 W Adams St",
+    "submarket_id": "chi-fulton-market",
+    "sf": 20500,
+    "lease_type": "direct",
+    "asking_rent_psf": 43.75,
+    "effective_rent_psf": 40.9,
+    "lease_start_date": "2026-05-10",
+    "tenant_industry": "technology",
+    "concessions": "1 month free",
+    "source_system": "opensearch-comps",
+    "last_verified_at": "2026-08-31T00:00:00Z"
+  },
+  {
+    "comp_id": "c_1263",
+    "address": "225 N Morgan St",
+    "submarket_id": "chi-fulton-market",
+    "sf": 18000,
+    "lease_type": "direct",
+    "asking_rent_psf": 44.5,
+    "effective_rent_psf": 41.5,
+    "lease_start_date": "2026-06-22",
+    "tenant_industry": "legal",
+    "concessions": null,
+    "source_system": "opensearch-comps",
+    "last_verified_at": "2026-08-25T00:00:00Z"
+  },
+  {
+    "comp_id": "c_1279",
+    "address": "130 S Canal St",
+    "submarket_id": "chi-fulton-market",
+    "sf": 21500,
+    "lease_type": "direct",
+    "asking_rent_psf": 42.75,
+    "effective_rent_psf": 39.9,
+    "lease_start_date": "2025-12-05",
+    "tenant_industry": "financial_services",
+    "concessions": "2 months free",
+    "source_system": "opensearch-comps",
+    "last_verified_at": "2026-07-15T00:00:00Z"
+  },
+  {
     "comp_id": "c_1154",
     "address": "600 W Chicago Ave",
     "submarket_id": "chi-river-north",
@@ -110,5 +152,47 @@
     "concessions": "2 months free",
     "source_system": "opensearch-comps",
     "last_verified_at": "2026-08-30T00:00:00Z"
+  },
+  {
+    "comp_id": "c_1298",
+    "address": "435 N Clark St",
+    "submarket_id": "chi-river-north",
+    "sf": 19000,
+    "lease_type": "direct",
+    "asking_rent_psf": 41.25,
+    "effective_rent_psf": 38.4,
+    "lease_start_date": "2026-05-01",
+    "tenant_industry": "media",
+    "concessions": "1 month free",
+    "source_system": "opensearch-comps",
+    "last_verified_at": "2026-08-20T00:00:00Z"
+  },
+  {
+    "comp_id": "c_1312",
+    "address": "111 W Illinois St",
+    "submarket_id": "chi-river-north",
+    "sf": 22500,
+    "lease_type": "direct",
+    "asking_rent_psf": 40.5,
+    "effective_rent_psf": 37.6,
+    "lease_start_date": "2026-07-08",
+    "tenant_industry": "healthcare",
+    "concessions": null,
+    "source_system": "opensearch-comps",
+    "last_verified_at": "2026-08-29T00:00:00Z"
+  },
+  {
+    "comp_id": "c_1328",
+    "address": "300 N LaSalle Dr",
+    "submarket_id": "chi-river-north",
+    "sf": 17800,
+    "lease_type": "direct",
+    "asking_rent_psf": 43.0,
+    "effective_rent_psf": 40.1,
+    "lease_start_date": "2025-10-15",
+    "tenant_industry": "technology",
+    "concessions": "2 months free",
+    "source_system": "opensearch-comps",
+    "last_verified_at": "2026-07-20T00:00:00Z"
   }
 ]
