@@ -25,7 +25,13 @@ class Settings(BaseSettings):
     review_min_comp_count: int = 3
     top_n_comps: int = 8
 
-    cors_allow_origins: list[str] = ["http://localhost:5174", "http://127.0.0.1:5174"]
+    cors_allow_origins: list[str] = [
+        "http://localhost:5174",
+        "http://127.0.0.1:5174",
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+        "https://auto-val-mktanalysis.netlify.app",
+    ]
 
     voyage_api_key: str = ""
     voyage_model: str = "voyage-3"
