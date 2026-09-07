@@ -1,5 +1,6 @@
 import json
 from dataclasses import dataclass
+from datetime import date
 
 from app import claude_client
 from app.schemas.request import ValuationRequest
@@ -24,6 +25,7 @@ async def formulate_query(request: ValuationRequest) -> QueryPlan:
     iteration). Uses the query-formulation skill via claude_client."""
     user_content = json.dumps(
         {
+            "today": date.today().isoformat(),
             "submarket_id": request.submarket_id,
             "property_type": request.property_type,
             "space_sf": request.space_sf,

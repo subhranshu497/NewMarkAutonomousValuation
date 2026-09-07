@@ -12,8 +12,11 @@ another component will use to call them.
 
 ## Input
 
-A JSON object with: `submarket_id`, `property_type`, `space_sf`,
-`lease_assumptions` (`lease_type`, `term_months`, `concessions_assumed`).
+A JSON object with: `today` (the current date, `YYYY-MM-DD` — the only source
+of truth for "current"; never infer today's date from anything else,
+including your own training data), `submarket_id`, `property_type`,
+`space_sf`, `lease_assumptions` (`lease_type`, `term_months`,
+`concessions_assumed`).
 
 ## What you decide
 
@@ -22,7 +25,10 @@ A JSON object with: `submarket_id`, `property_type`, `space_sf`,
   - Size window should bracket `space_sf` with a reasonable tolerance, not
     an exact match — comps rarely match size exactly.
   - Date window and radius should start narrow (recent, close) and only
-    widen in the refinement policy, not in the initial query.
+    widen in the refinement policy, not in the initial query. "Recent" is
+    always relative to `today` from the input — e.g. `date_to` should be
+    `today`, and the initial `date_from` should be a few months back from
+    `today`, not from any date you might otherwise assume is current.
 - `market_stats` parameters: `submarket_id`, `metric` (choose from
   `vacancy_rate`, `net_absorption`, `asking_rent_trend` — request the ones
   relevant to a rent recommendation), `time_window`.

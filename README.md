@@ -54,6 +54,7 @@ grounding strategy because:
 - **Freshness**: Market data — asking rents, vacancy, absorption — changes
   constantly. An LLM's static training knowledge can't reflect this; every
   recommendation must be grounded in freshly retrieved, current records.
+  *(Design rationale — see note on current data sources below.)*
 - **Groundedness / trust**: Valuation numbers need to be defensible and
   traceable back to real comps and market stats, not generated from the
   model's general knowledge. RAG ties every output to retrieved evidence.
@@ -68,12 +69,19 @@ grounding strategy because:
 
 ## High-Level Solution
 
-**System integration**
+**System integration (target architecture)**
 
-- **Analytics Tier & Comparables Service** — the copilot integrates with:
+- **Analytics Tier & Comparables Service** — the copilot is designed to
+  integrate with:
     - `GET /v1/market-stats` — Snowflake/dbt aggregates (vacancy, net
       absorption, submarket trends)
     - `GET /v1/comps/search` — OpenSearch-backed comparable transaction records
+
+  *Current build:* both are implemented as thin, swappable tool interfaces
+  (`comps_search`, `market_stats`) sitting in front of a small in-memory
+  fixture dataset rather than live Snowflake/OpenSearch — see
+  `DESIGN.md` §4.1 for exactly what's real vs. simulated today, and what
+  needs to change to point these tools at production systems.
 
 **Agentic RAG pipeline**
 
@@ -87,9 +95,17 @@ grounding strategy because:
 3. **Valuation Agent** — Reasons over the retrieved comps and market trends to
    produce an estimated market rent recommendation (`$/PSF`) for the new
    availability, along with supporting rationale.
-4. **Output** — The recommendation automatically populates `askingRentPsf`
-   previews in the system of record, and/or generates a customized submarket
-   analysis report for client-facing presentations.
+4. **Verification & human-in-the-loop** — A deterministic groundedness check
+   confirms every cited figure exists in the retrieved evidence, and a
+   confidence score is computed from comp count/recency/spread. Anything
+   ungrounded or low-confidence routes to an analyst review queue instead of
+   auto-publishing, rather than trusting the LLM's own judgment. This is
+   built end-to-end, including a review UI — see `DESIGN.md` §6.4–§6.6.
+5. **Output** — The recommendation is returned as a structured result with
+   citations, confidence, and full trace, surfaced in the app UI. Automatic
+   write-back to `askingRentPsf` in an external system of record and
+   auto-generated client-facing reports are targeted but not yet built
+   (`DESIGN.md` FR8).
 
 **Flow at a glance**
 
@@ -97,12 +113,22 @@ grounding strategy because:
 User request (property / submarket)
         │
         ▼
-Data Retrieval Agent ──▶ GET /v1/comps/search (OpenSearch)
-        │            └─▶ GET /v1/market-stats (Snowflake/dbt)
+Data Retrieval Agent ──▶ GET /v1/comps/search (OpenSearch — target;
+        │                 in-memory fixtures today)
+        └─▶ GET /v1/market-stats (Snowflake/dbt — target;
+                                    in-memory fixtures today)
         ▼
 Analytical RAG (grounds trends + comps together)
         ▼
-Valuation Agent ──▶ $/PSF recommendation + rationale
+Valuation Agent ──▶ $/PSF recommendation + rationale + citations
         ▼
-Output: askingRentPsf preview  /  submarket analysis report
+Groundedness verifier + confidence score ──▶ pass ──▶ Output
+        │
+        └─▶ fail / low confidence ──▶ Human review queue (built, with UI)
+        ▼
+Output: structured result in app UI  /  askingRentPsf preview (target)
 ```
+
+See `DESIGN.md` for the full architecture as actually implemented
+(orchestration graph, agent objectives, memory design, and an honest
+build-status breakdown in §6.9).
