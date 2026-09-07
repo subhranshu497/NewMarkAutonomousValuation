@@ -7,7 +7,12 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", env_prefix="", extra="ignore")
 
     anthropic_api_key: str = ""
-    claude_model: str = "claude-sonnet-5"
+    # Haiku for the two generation-layer calls (query formulation +
+    # valuation synthesis) — both are narrow, structured-output tasks over a
+    # bounded evidence bundle, not open-ended reasoning, so the cheaper/
+    # faster model is the right default. Override via CLAUDE_MODEL if a
+    # harder case ever needs Sonnet's extra reasoning depth.
+    claude_model: str = "claude-haiku-4-5-20251001"
 
     max_retrieval_iterations: int = 3
     max_llm_calls: int = 2

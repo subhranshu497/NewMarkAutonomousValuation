@@ -1,11 +1,15 @@
 import ast
+import json
 import pathlib
 
 import pytest
 
 from app.agents.data_retrieval_agent import QueryPlan, RefinementStep
+from app.logic.confidence import compute_confidence
+from app.logic.groundedness_verifier import verify_groundedness
 from app.orchestrator import graph as graph_module
 from app.orchestrator import nodes
+from app.retrieval.schema import RetrievalResult, RetrievedDocument
 from app.schemas.evidence import TimeSeries, TimeSeriesPoint
 from app.schemas.result import ValuationResult
 from tests.test_orchestrator_nodes import StubVectorRetriever, make_comp, make_request
@@ -135,6 +139,63 @@ async def test_full_graph_run_stops_at_max_iterations_when_never_sufficient(monk
     retrieval_spans = [span for span in final_state["trace"] if span.step.startswith("retrieval_iteration_")]
     assert len(retrieval_spans) == 3  # default max_retrieval_iterations, never sufficient
     assert final_state["result"].needs_human_review is True
+
+
+@pytest.mark.anyio
+async def test_evaluation_layer_grounds_a_semantic_only_citation(monkeypatch):
+    """Evaluation-layer cohesion check: a comp that exists ONLY because the
+    semantic retrieval layer surfaced it (structured comps_search finds
+    nothing) must still verify as grounded when cited, and must still count
+    toward the deterministic confidence score — groundedness_verifier.py and
+    confidence.py are provenance-agnostic by design, and this proves it end
+    to end rather than at the unit level."""
+    plan = make_query_plan(refinement_steps=[], market_stats_params=[])
+
+    async def fake_formulate_query(request):
+        return plan
+
+    semantic_comp = make_comp("c_semantic_only")
+    semantic_doc = RetrievedDocument(
+        doc_id=semantic_comp.comp_id,
+        doc_type="comp",
+        text="semantic match",
+        metadata=json.loads(semantic_comp.model_dump_json()),
+        source_system="test",
+        score=0.42,
+    )
+    stub_result = RetrievalResult(query="q", matches=[semantic_doc])
+
+    result = ValuationResult(
+        recommended_rent_psf=42.0,
+        range_low=40.0,
+        range_high=44.0,
+        confidence=0.9,
+        rationale_text="Based on comp c_semantic_only.",
+        cited_comp_ids=["c_semantic_only"],
+        cited_market_stat_ids=[],
+        needs_human_review=False,
+    )
+
+    async def fake_synthesize_valuation(evidence):
+        # Structured retrieval contributed nothing; this citation can only
+        # resolve if the semantic match survived context building.
+        assert [c.comp_id for c in evidence.top_comps] == ["c_semantic_only"]
+        return result
+
+    monkeypatch.setattr(nodes, "formulate_query", fake_formulate_query)
+    monkeypatch.setattr(nodes, "market_stats", lambda **kwargs: None)
+    monkeypatch.setattr(nodes, "VectorRetriever", lambda: StubVectorRetriever(result=stub_result))
+    monkeypatch.setattr(nodes, "comps_search", lambda **kwargs: [])  # structured path finds nothing
+    monkeypatch.setattr(nodes, "synthesize_valuation", fake_synthesize_valuation)
+
+    compiled = graph_module.build_graph()
+    final_state = await compiled.ainvoke({"request": make_request(), "trace": []})
+
+    evidence = final_state["evidence"]
+    assert evidence.summary_stats.comp_count == 1
+    assert verify_groundedness(final_state["result"], evidence) is True
+    assert compute_confidence(evidence) > 0.0
+    assert final_state["result"].needs_human_review is True  # only 1 comp, correctly still routed to review
 
 
 def test_agents_do_not_import_each_other():
