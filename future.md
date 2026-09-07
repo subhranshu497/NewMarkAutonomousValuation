@@ -5,9 +5,6 @@ current build-status detail behind each item.
 
 ## 1. Data & Retrieval
 
-- Activate semantic retrieval — trigger the ingestion pipeline on app
-  startup so the LanceDB table is populated (currently empty; the
-  `semantic_retrieve` node silently returns zero results).
 - Replace mock `comps_search` / `market_stats` with real OpenSearch /
   Snowflake-dbt API calls (tool interfaces already isolated for this swap).
 - Add resilience (timeout/retry/fallback) around real external tool calls —

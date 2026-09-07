@@ -136,8 +136,8 @@ weigh evidence*, never to *whether to follow the rules*.
                  fetch_market_stats     semantic_retrieve
                  (in-memory JSON        (Voyage embed query →
                   fixture lookup)        LanceDB cosine search;
-                            │            table is empty at
-                            │            runtime — see §6.9)
+                            │            table seeded from
+                            │            fixtures on startup — see §6.9)
                             └────────┬────────┘
                                      ▼
                     ┌─────────────────────────────┐
@@ -192,7 +192,7 @@ weigh evidence*, never to *whether to follow the rules*.
 |---|---|---|---|
 | Orchestrator | Owns the control loop and state; routes between retrieval, valuation, verification | LangGraph `StateGraph` | Real — `orchestrator/graph.py`, compiled once and reused; state additive-reduces a `trace` list across nodes. |
 | Data Retrieval Agent | Decides *what* to query, produces an ordered refinement policy up front | LLM-guided (1 call) | Real — `agents/data_retrieval_agent.py`, Claude Haiku via LangChain. |
-| Semantic Retrieval | Embeds the request as free text, does a cosine-similarity ANN search over an evidence corpus | Real embedding + vector search infra, but functionally inert | `retrieval/` package (Voyage + LanceDB) is fully implemented; nothing populates the runtime LanceDB table (no ingestion is triggered on app startup), so every request degrades to zero semantic hits. |
+| Semantic Retrieval | Embeds the request as free text, does a cosine-similarity ANN search over an evidence corpus | Real embedding + vector search infra | `retrieval/` package (Voyage + LanceDB) is fully implemented; a `lifespan` startup hook re-runs the ingestion pipeline against the fixtures on every boot, so the LanceDB table is populated with real embeddings by the time the API serves traffic. |
 | Sufficiency Check | Enforces the "enough evidence?" gate | Rule-based, deterministic | Real — `logic/sufficiency.py`. |
 | Context Builder | Dedupe/normalize comps, compute medians/spread programmatically, assemble a bounded-size evidence bundle | Deterministic code | Real — `logic/context_builder.py`. |
 | Valuation Agent | Reasons over the evidence bundle to produce number + rationale | LLM (1 call) | Real — `agents/valuation_agent.py`, Claude Haiku via LangChain. |
@@ -217,19 +217,30 @@ The design targets `comps/search` (OpenSearch-backed) and `market-stats`
   where a real OpenSearch/Snowflake-backed call replaces the mock."
 - Underneath, `data/mock_store.py` does pure in-memory Python
   list-comprehension filtering (exact match on submarket, lease type, SF
-  range, date range) over two static JSON fixtures (14 comps, 6 market-stat
-  series) loaded once at import time via `@lru_cache`. `property_type` and
-  `radius_miles` are accepted parameters but are no-ops — the fixtures don't
-  carry those dimensions.
+  range, date range) over two static JSON files (`data/input/comps.json`,
+  14 comps; `data/input/market_stats.json`, 6 series) loaded once at import
+  time via `@lru_cache`. `property_type` and `radius_miles` are accepted
+  parameters but are no-ops — the source files don't carry those dimensions.
 - Separately, a genuine embedding-based retrieval path exists and is wired
   into the graph (`semantic_retrieve` node): a real ingestion pipeline
-  (`ingestion/`) normalizes the same fixtures, redacts PII, embeds them with
-  Voyage AI, and upserts into a LanceDB table; a real retrieval client
-  (`retrieval/`) embeds the query and does cosine ANN search against that
-  table. This is not a design aspiration — it's implemented and tested code.
-  The gap is operational, not architectural: nothing calls the ingestion
-  pipeline at app startup, so the runtime LanceDB table is empty and this
-  path always returns zero results, silently, today.
+  (`ingestion/pipeline.py`) normalizes every file under `data/input/`,
+  redacts PII, embeds them with Voyage AI, and upserts into a LanceDB table;
+  a real retrieval client (`retrieval/`) embeds the query and does cosine
+  ANN search against that table. This is not a design aspiration — it's
+  implemented and tested code. `discover_sources()` scans `data/input/` at
+  ingestion time rather than reading from a hardcoded file list — it infers
+  each file's `doc_type` from filename (anything with "comp" in the stem,
+  anything with "market_stat"), so any number of comp/market-stat files
+  dropped into that one directory get ingested without a code change. A
+  FastAPI `lifespan` hook (`main.py`) re-runs this discovery + ingestion on
+  every process startup — idempotent (upserts are keyed by `doc_id`) and
+  failure-isolated (an ingestion error is logged, not raised, so a Voyage
+  outage degrades semantic retrieval to empty results instead of blocking
+  the API from serving the deterministic comps_search/market_stats path).
+  The remaining gap: `mock_store.py` (the deterministic path) still reads
+  exactly `comps.json`/`market_stats.json` by fixed name, so it won't pick
+  up extra files the same way ingestion does — only the semantic path
+  benefits from multi-file discovery today.
 - No Redis, no SQL/NoSQL database, and no message queue exist anywhere in
   the stack. Every stateful store in the running system (fixture cache,
   trace store, review queue) is a process-local Python object.
@@ -342,7 +353,7 @@ malformed LLM output is rejected rather than silently coerced.
    `refinement_policy` (list of `RefinementStep{adjust, to}`) — both
    produced in this single call.
 2. **Act**: `fetch_market_stats` runs, then `semantic_retrieve` (Voyage
-   embed + LanceDB cosine search, currently inert — §4.1), then
+   embed + LanceDB cosine search over the seeded fixture table — §4.1), then
    `retrieve_comps` (in-memory field-filter search), merging any semantic
    hits with structured hits by `comp_id`.
 3. **Check** (§6.3, `is_sufficient`): sufficient → proceed to
@@ -488,13 +499,15 @@ What's fully real and working end-to-end today:
 What's simulated or not yet wired up, and should not be assumed "done"
 just because the code exists:
 
-- **Semantic retrieval is inert at runtime.** The ingestion pipeline is
-  CLI-triggered only (`python -m app.ingestion.pipeline`); nothing calls it
-  on app startup, so the LanceDB table backing `semantic_retrieve` is empty
-  in the running app. Every request silently gets zero semantic hits and
-  falls back entirely to the structured field-filter path. Fix: add a
-  startup hook (or a one-time deploy step) that runs ingestion before the
-  API starts serving traffic.
+- **Semantic retrieval is now seeded on every startup**, via a FastAPI
+  `lifespan` hook in `main.py` that runs the ingestion pipeline (previously
+  CLI-triggered only, via `python -m app.ingestion.pipeline`) before the API
+  starts serving traffic. It re-embeds the same static fixtures each boot —
+  idempotent by `doc_id`, and a Voyage failure is caught and logged rather
+  than blocking startup, so the deterministic comps_search/market_stats path
+  still serves even if the semantic path can't seed. What's still not
+  built: a way to ingest *new* or *changed* source data at runtime — this
+  only re-syncs the fixed fixture set.
 - **No Redis/cache layer anywhere** — session memory (FR10) and the
   evidence cache (§5) are unimplemented, not just deferred-and-stubbed.
 - **Trace store and review queue are process-local dicts.** Both are
@@ -545,9 +558,7 @@ ingestion), not gaps in the agentic reasoning design itself.**
 
 ## 8. Risks & Open Questions
 
-- **Semantic retrieval is dead code at runtime** until ingestion is
-  triggered on startup — the single highest-leverage fix to close the gap
-  between "designed" and "built" (§6.9).
+- **Startup ingestion re-syncs `data/input/`, restart is still required for new data, and mock_store.py doesn't share the multi-file discovery
 - **In-memory trace/review storage** means every deploy or restart silently
   destroys the audit trail FR9 exists for — a real risk for a product whose
   core pitch is defensibility, not just a scale limitation.

@@ -5,18 +5,18 @@ from pathlib import Path
 
 from app.schemas.evidence import Comp, TimeSeries
 
-FIXTURES_DIR = Path(__file__).parent / "fixtures"
+INPUT_DIR = Path(__file__).parent / "input"
 
 
 @lru_cache
 def load_comps() -> list[Comp]:
-    data = json.loads((FIXTURES_DIR / "comps.json").read_text())
+    data = json.loads((INPUT_DIR / "comps.json").read_text())
     return [Comp(**row) for row in data]
 
 
 @lru_cache
 def load_market_stats() -> list[TimeSeries]:
-    data = json.loads((FIXTURES_DIR / "market_stats.json").read_text())
+    data = json.loads((INPUT_DIR / "market_stats.json").read_text())
     return [TimeSeries(**row) for row in data]
 
 

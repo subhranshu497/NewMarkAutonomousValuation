@@ -10,15 +10,42 @@ from app.ingestion.vector_store import LanceVectorStore
 
 logger = logging.getLogger(__name__)
 
-FIXTURES_DIR = Path(__file__).resolve().parent.parent / "data" / "fixtures"
+INPUT_DIR = Path(__file__).resolve().parent.parent / "data" / "input"
 
-# Registry of ingestible sources: (file path, doc_type, source_system label).
-# Onboarding a new heterogeneous source is one entry here; loaders.py and
-# normalizers.py already handle format/schema drift generically.
-SOURCES: list[tuple[Path, str, str]] = [
-    (FIXTURES_DIR / "comps.json", "comp", "opensearch-comps"),
-    (FIXTURES_DIR / "market_stats.json", "market_stat", "snowflake-market-stats"),
+# Filename substring -> (doc_type, source_system label). Checked in order,
+# against the lowercased file stem, so e.g. "comps_batch2.json" and
+# "market_stats_q3.csv" both resolve without a code change per file.
+_DOC_TYPE_BY_FILENAME: list[tuple[str, str, str]] = [
+    ("market_stat", "market_stat", "snowflake-market-stats"),
+    ("comp", "comp", "opensearch-comps"),
 ]
+
+_LOADABLE_SUFFIXES = {".json", ".csv"}
+
+
+def discover_sources(input_dir: Path = INPUT_DIR) -> list[tuple[Path, str, str]]:
+    """Scans `input_dir` for every ingestible file and infers doc_type/
+    source_system from the filename, so dropping additional comp or
+    market-stat files (or multiple of either) into the directory is picked
+    up automatically — no registry to edit. A file whose name matches
+    neither pattern is skipped with a warning rather than failing the whole
+    scan."""
+    if not input_dir.is_dir():
+        logger.warning("ingestion input directory %s does not exist — nothing to ingest", input_dir)
+        return []
+
+    sources = []
+    for path in sorted(input_dir.iterdir()):
+        if not path.is_file() or path.suffix.lower() not in _LOADABLE_SUFFIXES:
+            continue
+        stem = path.stem.lower()
+        match = next((entry for entry in _DOC_TYPE_BY_FILENAME if entry[0] in stem), None)
+        if match is None:
+            logger.warning("skipping %s: filename doesn't indicate a known doc_type (comp/market_stat)", path.name)
+            continue
+        _, doc_type, source_system = match
+        sources.append((path, doc_type, source_system))
+    return sources
 
 
 def _normalize_batch(
@@ -60,14 +87,15 @@ async def ingest_source(
 
 
 async def run_ingestion(sources: list[tuple[Path, str, str]] | None = None) -> list[IngestionReport]:
-    """Ingestion-layer entry point: normalize every configured source into
-    IngestDocuments, embed them with Voyage AI, and upsert them into the
-    LanceDB vector store, keyed by doc_id for idempotent re-runs."""
+    """Ingestion-layer entry point: normalize every source under
+    `data/input/` (or an explicit `sources` list) into IngestDocuments, embed
+    them with Voyage AI, and upsert them into the LanceDB vector store, keyed
+    by doc_id for idempotent re-runs."""
     embedder = VoyageEmbedder()
     vector_store = LanceVectorStore()
 
     reports = []
-    for path, doc_type, source_system in sources or SOURCES:
+    for path, doc_type, source_system in sources if sources is not None else discover_sources():
         report = await ingest_source(path, doc_type, source_system, embedder, vector_store)
         reports.append(report)
         logger.info(

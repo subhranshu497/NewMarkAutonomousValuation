@@ -3,7 +3,7 @@ import json
 from pathlib import Path
 
 from app.config import Settings
-from app.ingestion.pipeline import _normalize_batch, ingest_source
+from app.ingestion.pipeline import _normalize_batch, discover_sources, ingest_source
 from app.ingestion.vector_store import LanceVectorStore
 
 DIM = 4
@@ -81,3 +81,22 @@ def test_ingest_source_embeds_and_upserts_valid_records(tmp_path: Path):
     assert report.skipped == 1
     assert store.count() == 1
     assert store.get_by_id("c_1") is not None
+
+
+def test_discover_sources_finds_multiple_files_per_doc_type(tmp_path: Path):
+    (tmp_path / "comps_batch1.json").write_text("[]")
+    (tmp_path / "comps_batch2.json").write_text("[]")
+    (tmp_path / "market_stats_chicago.json").write_text("[]")
+    (tmp_path / "notes.txt").write_text("not ingestible")
+
+    sources = discover_sources(tmp_path)
+
+    assert sorted((path.name, doc_type, source_system) for path, doc_type, source_system in sources) == [
+        ("comps_batch1.json", "comp", "opensearch-comps"),
+        ("comps_batch2.json", "comp", "opensearch-comps"),
+        ("market_stats_chicago.json", "market_stat", "snowflake-market-stats"),
+    ]
+
+
+def test_discover_sources_returns_empty_for_missing_directory(tmp_path: Path):
+    assert discover_sources(tmp_path / "does-not-exist") == []
