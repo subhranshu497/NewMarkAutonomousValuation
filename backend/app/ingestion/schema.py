@@ -14,6 +14,7 @@ class IngestDocument(BaseModel):
     metadata: dict[str, Any] = Field(default_factory=dict)
     source_system: str
     ingested_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    pii_redacted: bool = False
 
 
 class IngestionError(Exception):
@@ -32,3 +33,4 @@ class IngestionReport(BaseModel):
     ingested: int
     skipped: int
     skipped_reasons: list[str] = Field(default_factory=list)
+    pii_redactions: int = 0

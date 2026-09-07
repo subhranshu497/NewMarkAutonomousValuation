@@ -44,6 +44,7 @@ async def ingest_source(
 ) -> IngestionReport:
     raw_records = load_records(path)
     documents, skipped_reasons = _normalize_batch(raw_records, doc_type, source_system)
+    pii_redactions = sum(1 for doc in documents if doc.pii_redacted)
 
     embeddings = await embedder.embed_documents([doc.text for doc in documents])
     ingested = vector_store.upsert(documents, embeddings)
@@ -54,6 +55,7 @@ async def ingest_source(
         ingested=ingested,
         skipped=len(skipped_reasons),
         skipped_reasons=skipped_reasons,
+        pii_redactions=pii_redactions,
     )
 
 
@@ -69,11 +71,12 @@ async def run_ingestion(sources: list[tuple[Path, str, str]] | None = None) -> l
         report = await ingest_source(path, doc_type, source_system, embedder, vector_store)
         reports.append(report)
         logger.info(
-            "ingested %s: %d/%d records (%d skipped)",
+            "ingested %s: %d/%d records (%d skipped, %d PII-redacted)",
             report.source,
             report.ingested,
             report.total_records,
             report.skipped,
+            report.pii_redactions,
         )
     return reports
 
@@ -83,10 +86,12 @@ def main() -> None:
     reports = asyncio.run(run_ingestion())
     total_ingested = sum(report.ingested for report in reports)
     total_skipped = sum(report.skipped for report in reports)
+    total_pii_redactions = sum(report.pii_redactions for report in reports)
     logger.info(
-        "ingestion complete: %d ingested, %d skipped across %d source(s)",
+        "ingestion complete: %d ingested, %d skipped, %d PII-redacted across %d source(s)",
         total_ingested,
         total_skipped,
+        total_pii_redactions,
         len(reports),
     )
 

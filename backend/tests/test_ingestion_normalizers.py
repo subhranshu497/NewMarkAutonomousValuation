@@ -75,6 +75,18 @@ def test_normalize_comp_raises_ingestion_error_on_invalid_record():
         normalize_comp(raw, source_system="opensearch-comps")
 
 
+def test_normalize_comp_masks_pii_injected_into_free_text_fields():
+    raw = make_raw_comp(concessions="3 months free, contact broker at jane@corp.com or 312-555-0134")
+    doc = normalize_comp(raw, source_system="opensearch-comps")
+
+    assert "jane@corp.com" not in doc.text
+    assert "312-555-0134" not in doc.text
+    assert "[REDACTED_EMAIL]" in doc.text
+    assert "[REDACTED_PHONE]" in doc.text
+    assert doc.metadata["concessions"] == "3 months free, contact broker at [REDACTED_EMAIL] or [REDACTED_PHONE]"
+    assert doc.pii_redacted is True
+
+
 def test_normalize_market_stat_builds_doc_id_matching_citation_convention():
     doc = normalize_market_stat(make_raw_market_stat(), source_system="snowflake-market-stats")
     assert doc.doc_id == market_stat_id("chi-fulton-market", "vacancy_rate")

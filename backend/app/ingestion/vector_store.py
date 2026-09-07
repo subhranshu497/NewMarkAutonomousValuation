@@ -19,6 +19,7 @@ def _record_schema(dim: int) -> type[LanceModel]:
         metadata_json: str
         source_system: str
         ingested_at: str
+        pii_redacted: bool
         vector: Vector(dim)  # type: ignore[valid-type]
 
     return EvidenceDocumentRecord
@@ -53,6 +54,7 @@ class LanceVectorStore:
                 "metadata_json": json.dumps(doc.metadata, default=str),
                 "source_system": doc.source_system,
                 "ingested_at": doc.ingested_at.isoformat(),
+                "pii_redacted": doc.pii_redacted,
                 "vector": vector,
             }
             for doc, vector in zip(documents, embeddings)

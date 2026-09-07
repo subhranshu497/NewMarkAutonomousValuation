@@ -3,6 +3,7 @@ from typing import Any, Callable
 
 from pydantic import ValidationError
 
+from app.ingestion.pii_filter import mask_document
 from app.ingestion.schema import IngestDocument, IngestionError
 from app.logic.groundedness_verifier import market_stat_id
 from app.schemas.evidence import Comp, TimeSeries
@@ -56,13 +57,14 @@ def normalize_comp(raw: dict[str, Any], source_system: str) -> IngestDocument:
     if comp.concessions:
         text += f" Concessions: {comp.concessions}."
 
-    return IngestDocument(
+    doc = IngestDocument(
         doc_id=comp.comp_id,
         doc_type="comp",
         text=text,
         metadata=json.loads(comp.model_dump_json()),
         source_system=comp.source_system or source_system,
     )
+    return mask_document(doc)
 
 
 def normalize_market_stat(raw: dict[str, Any], source_system: str) -> IngestDocument:
@@ -80,13 +82,14 @@ def normalize_market_stat(raw: dict[str, Any], source_system: str) -> IngestDocu
         f"percentile rank {series.percentile_rank * 100:.0f}. Recent values: {recent_points}."
     )
 
-    return IngestDocument(
+    doc = IngestDocument(
         doc_id=market_stat_id(series.submarket_id, series.metric),
         doc_type="market_stat",
         text=text,
         metadata=json.loads(series.model_dump_json()),
         source_system=source_system,
     )
+    return mask_document(doc)
 
 
 NORMALIZERS: dict[str, Callable[[dict[str, Any], str], IngestDocument]] = {
