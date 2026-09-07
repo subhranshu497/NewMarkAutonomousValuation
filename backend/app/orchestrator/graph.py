@@ -1,166 +1,99 @@
-import uuid
-from datetime import date, datetime
+"""The orchestration hub (DESIGN.md §4/§6.2).
 
-from app.agents.data_retrieval_agent import formulate_query
-from app.agents.valuation_agent import synthesize_valuation
+This module owns the plan -> act -> check control flow as a LangGraph
+StateGraph: it is the *only* caller of every spoke in app.orchestrator.nodes
+(which in turn are the only callers of the Data Retrieval Agent, the
+Valuation Agent, the semantic retrieval layer, and the comps/market-stats
+tools). No spoke calls another spoke or agent directly — every transition,
+including the bounded retrieval refinement loop, is a graph edge decided
+here. That's the hub-and-spoke guarantee: agent-to-agent communication only
+happens by going through this orchestrator.
+
+Retrieval is hybrid: semantic_retrieve (Voyage + LanceDB cosine search)
+runs once to seed additional evidence, then retrieve_comps runs the
+deterministic exact-match structured search/refinement loop on top of it —
+semantic retrieval augments, it never replaces, the structured path.
+
+Exactly 2 LLM calls total per request (NFR "<=2 reasoning calls"): the Data
+Retrieval Agent returns both the initial query params AND an ordered
+refinement policy in one call, so the up-to-3 retrieval iterations that
+follow apply that policy mechanically with no further LLM calls. The
+Valuation Agent is the second and last LLM call. (Semantic retrieval calls
+Voyage's embedding API, not an LLM reasoning call, so it isn't counted here.)
+"""
+
+import uuid
+
+from langgraph.graph import END, START, StateGraph
+from langgraph.graph.state import CompiledStateGraph
+
 from app.config import get_settings
-from app.logic.confidence import compute_confidence
-from app.logic.context_builder import build_evidence_bundle
-from app.logic.groundedness_verifier import verify_groundedness
-from app.logic.sufficiency import is_sufficient
+from app.orchestrator import nodes
 from app.orchestrator.state import OrchestratorState
-from app.schemas.evidence import TimeSeries
 from app.schemas.request import ValuationRequest
-from app.schemas.result import TraceSpan, ValuationResponse
+from app.schemas.result import ValuationResponse
 from app.storage import review_queue, trace_store
-from app.tools.comps_search import comps_search
-from app.tools.market_stats import market_stats
+
+
+def route_after_retrieval(state: OrchestratorState) -> str:
+    """Hub decision: loop back to retrieve_comps, or move on to
+    build_context. This conditional edge is the only place iteration
+    continues or stops — retrieve_comps_node never decides this itself."""
+    settings = get_settings()
+    if state["stop_retrieval"] or state["iteration"] >= settings.max_retrieval_iterations:
+        return "build_context"
+    return "retrieve_comps"
+
+
+def build_graph() -> CompiledStateGraph:
+    graph = StateGraph(OrchestratorState)
+
+    graph.add_node("formulate_query", nodes.formulate_query_node)
+    graph.add_node("fetch_market_stats", nodes.fetch_market_stats_node)
+    graph.add_node("semantic_retrieve", nodes.semantic_retrieve_node)
+    graph.add_node("retrieve_comps", nodes.retrieve_comps_node)
+    graph.add_node("build_context", nodes.build_context_node)
+    graph.add_node("synthesize_valuation", nodes.synthesize_valuation_node)
+    graph.add_node("verify_and_score", nodes.verify_and_score_node)
+
+    graph.add_edge(START, "formulate_query")
+    graph.add_edge("formulate_query", "fetch_market_stats")
+    graph.add_edge("fetch_market_stats", "semantic_retrieve")
+    graph.add_edge("semantic_retrieve", "retrieve_comps")
+    graph.add_conditional_edges(
+        "retrieve_comps",
+        route_after_retrieval,
+        {"retrieve_comps": "retrieve_comps", "build_context": "build_context"},
+    )
+    graph.add_edge("build_context", "synthesize_valuation")
+    graph.add_edge("synthesize_valuation", "verify_and_score")
+    graph.add_edge("verify_and_score", END)
+
+    return graph.compile()
+
+
+_compiled_graph: CompiledStateGraph | None = None
+
+
+def get_graph() -> CompiledStateGraph:
+    global _compiled_graph
+    if _compiled_graph is None:
+        _compiled_graph = build_graph()
+    return _compiled_graph
 
 
 async def run_valuation(request: ValuationRequest) -> ValuationResponse:
-    """DESIGN.md §4/§6.2 — deterministic plan -> act -> check state machine.
-
-    Exactly 2 LLM calls total (NFR "<=2 reasoning calls"): the Data
-    Retrieval Agent below returns both the initial query params AND an
-    ordered refinement policy in one call, so the up-to-3 retrieval
-    iterations that follow apply that policy mechanically with no further
-    LLM calls. The Valuation Agent is the second and last LLM call.
-    """
-    settings = get_settings()
-    state = OrchestratorState(request=request)
-
-    t0 = datetime.utcnow()
-    plan = await formulate_query(request)
-    state.trace.append(
-        _span(
-            "query_formulation",
-            t0,
-            {"initial_comps_search_params": plan.comps_search_params, "market_stats_params": plan.market_stats_params},
-            f"{len(plan.refinement_policy)} refinement steps planned",
-        )
-    )
-
-    t1 = datetime.utcnow()
-    state.market_stats_results = _fetch_market_stats(plan.market_stats_params)
-    state.trace.append(
-        _span(
-            "market_stats_fetch",
-            t1,
-            {"requested": plan.market_stats_params},
-            f"{len(state.market_stats_results)} series returned",
-        )
-    )
-
-    comps_search_params = dict(plan.comps_search_params)
-    for iteration in range(settings.max_retrieval_iterations):
-        state.iteration = iteration
-        t_iter = datetime.utcnow()
-        coerced_params = _coerce_comps_params(comps_search_params)
-        new_comps = comps_search(**coerced_params)
-        state.comps = list({comp.comp_id: comp for comp in state.comps + new_comps}.values())
-
-        sufficient = is_sufficient(
-            comps=state.comps,
-            market_stats_results=state.market_stats_results,
-            submarket_id=request.submarket_id,
-            radius_miles=coerced_params.get("radius_miles", 0),
-            recent_window_months=settings.recent_window_months,
-            min_comp_count=settings.min_comp_count,
-            min_recent_comp_count=settings.min_recent_comp_count,
-        )
-        state.trace.append(
-            _span(
-                f"retrieval_iteration_{iteration + 1}",
-                t_iter,
-                {"comps_search_params": coerced_params},
-                f"{len(new_comps)} new / {len(state.comps)} total comps, sufficient={sufficient}",
-            )
-        )
-
-        if sufficient:
-            break
-        if iteration < len(plan.refinement_policy):
-            step = plan.refinement_policy[iteration]
-            comps_search_params[step.adjust] = step.to
-        else:
-            break
-
-    t_ctx = datetime.utcnow()
-    state.evidence = build_evidence_bundle(state.comps, state.market_stats_results, request.space_sf, settings.top_n_comps)
-    state.trace.append(
-        _span(
-            "context_builder",
-            t_ctx,
-            {"top_n": settings.top_n_comps},
-            f"{state.evidence.summary_stats.comp_count} deduped comps, {len(state.evidence.top_comps)} selected",
-        )
-    )
-
-    t_val = datetime.utcnow()
-    state.result = await synthesize_valuation(state.evidence)
-    state.trace.append(
-        _span(
-            "valuation_synthesis",
-            t_val,
-            {},
-            f"recommended={state.result.recommended_rent_psf}/PSF, llm_confidence={state.result.confidence}",
-        )
-    )
-
-    t_verify = datetime.utcnow()
-    grounded = verify_groundedness(state.result, state.evidence)
-    deterministic_confidence = compute_confidence(state.evidence)
-    if not grounded:
-        state.result.needs_human_review = True
-    if (
-        min(state.result.confidence, deterministic_confidence) < settings.confidence_threshold
-        or state.evidence.summary_stats.comp_count < settings.review_min_comp_count
-    ):
-        state.result.needs_human_review = True
-    state.trace.append(
-        _span(
-            "verification_and_confidence",
-            t_verify,
-            {"deterministic_confidence": deterministic_confidence, "grounded": grounded},
-            f"needs_human_review={state.result.needs_human_review}",
-        )
-    )
+    """Public entry point (unchanged signature — api/routes_valuation.py
+    doesn't need to know the orchestrator runs on LangGraph)."""
+    final_state = await get_graph().ainvoke({"request": request, "trace": []})
 
     response = ValuationResponse(
         request_id=uuid.uuid4().hex,
-        result=state.result,
-        evidence=state.evidence,
-        trace=state.trace,
+        result=final_state["result"],
+        evidence=final_state["evidence"],
+        trace=final_state["trace"],
     )
     trace_store.save_result(response)
     if response.result.needs_human_review:
         review_queue.enqueue(response)
     return response
-
-
-def _span(step: str, started_at: datetime, params: dict, result_summary: str) -> TraceSpan:
-    return TraceSpan(step=step, started_at=started_at, finished_at=datetime.utcnow(), params=params, result_summary=result_summary)
-
-
-def _fetch_market_stats(params_list: list[dict]) -> list[TimeSeries]:
-    results = []
-    for params in params_list:
-        series = market_stats(
-            submarket_id=params["submarket_id"],
-            metric=params["metric"],
-            time_window=params.get("time_window", ""),
-        )
-        if series is not None:
-            results.append(series)
-    return results
-
-
-def _coerce_comps_params(params: dict) -> dict:
-    """The Data Retrieval Agent returns JSON, so date fields arrive as
-    'YYYY-MM-DD' strings — comps_search expects real `date` objects."""
-    coerced = dict(params)
-    for key in ("date_from", "date_to"):
-        value = coerced.get(key)
-        if isinstance(value, str):
-            coerced[key] = date.fromisoformat(value)
-    return coerced

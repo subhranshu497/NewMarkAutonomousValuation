@@ -31,7 +31,12 @@ class Settings(BaseSettings):
     ingestion_batch_size: int = 128
 
     retrieval_top_k: int = 5
-    retrieval_min_similarity: float = 0.2
+    # Calibrated against a live probe (testdata/calibrate_similarity_threshold.py)
+    # on voyage-3: unrelated queries scored 0.15-0.25 cosine similarity against
+    # the real-estate corpus, genuinely relevant ones scored 0.40-0.66. 0.30
+    # sits in that gap with margin on both sides. Re-run the calibration
+    # script if the corpus composition changes meaningfully.
+    retrieval_min_similarity: float = 0.30
 
 
 @lru_cache
