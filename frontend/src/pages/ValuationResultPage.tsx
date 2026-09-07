@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { getValuation } from "../api/client";
 import { ConfidenceBadge } from "../components/ConfidenceBadge";
 import { EvidencePanel } from "../components/EvidencePanel";
@@ -8,6 +8,7 @@ import type { ValuationResponse } from "../types/valuation";
 
 export function ValuationResultPage() {
   const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
   const [response, setResponse] = useState<ValuationResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -53,7 +54,17 @@ export function ValuationResultPage() {
               Range ${result.range_low} – ${result.range_high}
             </p>
           </div>
-          <ConfidenceBadge confidence={result.confidence} needsHumanReview={result.needs_human_review} />
+          <div className="result-hero-actions">
+            <ConfidenceBadge confidence={result.confidence} needsHumanReview={result.needs_human_review} />
+            {result.needs_human_review && (
+              <button
+                className="btn btn-outline btn-sm"
+                onClick={() => navigate("/review-queue", { state: { focusId: response.request_id } })}
+              >
+                Review
+              </button>
+            )}
+          </div>
         </div>
       </div>
 

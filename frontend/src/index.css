@@ -456,6 +456,16 @@ select {
   background: #fecaca;
 }
 
+.btn-warning {
+  background: var(--color-warning-soft);
+  border-color: transparent;
+  color: var(--color-warning);
+}
+
+.btn-warning:hover:not(:disabled) {
+  background: #fde68a;
+}
+
 .btn-sm {
   padding: 0.4rem 0.8rem;
   font-size: 0.8rem;
@@ -632,6 +642,34 @@ tbody tr:hover {
   align-items: center;
   justify-content: space-between;
   gap: 1.5rem;
+}
+
+.result-hero-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+/* ---------------------------------------------------------------- */
+/* Review queue detail panel                                          */
+/* ---------------------------------------------------------------- */
+.detail-row td {
+  background: var(--color-surface-muted);
+  padding: 0;
+}
+
+.detail-panel {
+  padding: 1.5rem 1.75rem;
+  border-top: 1px solid var(--color-border);
+}
+
+.detail-panel-header {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin-bottom: 1.25rem;
 }
 
 .request-id {
