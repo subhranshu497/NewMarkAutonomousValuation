@@ -1,0 +1,17 @@
+services:
+  - type: web
+    name: valuation-copilot-api
+    runtime: docker
+    rootDir: backend
+    dockerfilePath: ./Dockerfile
+    plan: free
+    healthCheckPath: /health
+    envVars:
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: VOYAGE_API_KEY
+        sync: false
+      - key: CLAUDE_MODEL
+        value: claude-haiku-4-5-20251001
+      - key: CORS_ALLOW_ORIGINS
+        value: '["https://auto-val-mktanalysis.netlify.app"]'
